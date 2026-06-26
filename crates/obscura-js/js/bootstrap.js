@@ -3020,6 +3020,8 @@ function _bodyToUint8Array(body) {
   if (body instanceof Uint8Array) return body;
   if (body instanceof ArrayBuffer) return new Uint8Array(body);
   if (ArrayBuffer.isView(body)) return new Uint8Array(body.buffer, body.byteOffset, body.byteLength);
+  // obscura's Blob materializes its data into _bytes in the constructor.
+  if (body._bytes instanceof Uint8Array) return body._bytes;
   return new TextEncoder().encode(String(body));
 }
 
@@ -3089,12 +3091,10 @@ function _serializeBody(initBody, headers) {
     return initBody.toString();
   }
   if (typeof Blob !== 'undefined' && initBody instanceof Blob) {
-    let text = '';
-    try { text = String.fromCharCode.apply(null, _bodyToUint8Array(initBody)); } catch(e) { text = String(initBody); }
     if (initBody.type && !Object.keys(headers).some(k => k.toLowerCase() === 'content-type')) {
       headers['Content-Type'] = initBody.type;
     }
-    return text;
+    return _bytesToBinaryString(_bodyToUint8Array(initBody));
   }
   if (typeof ArrayBuffer !== 'undefined' && initBody instanceof ArrayBuffer) {
     const bytes = new Uint8Array(initBody);
